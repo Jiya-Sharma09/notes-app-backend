@@ -1,6 +1,8 @@
 const express = require('express')
 const prisma = require('./prisma/client')
 const authenticate = require('./middleware/authenticate')
+const {addSchema, updateSchema} = require('./middleware/validators/notes_validators')
+const validate = require('./middleware/validate')
 
 const router = express.Router()
 
@@ -36,12 +38,9 @@ router.get('/:id', async (req, res, next) => {
 })
 
 // POST - create note
-router.post('/', async (req, res, next) => {
+router.post('/', validate(addSchema), async (req, res, next) => {
   try {
     const { title, content } = req.body
-    if (!title || !content) {
-      return res.status(400).json({ message: 'Title and content are required' })
-    }
     const note = await prisma.note.create({
       data: { title, content, userId: req.user.userId }
     })
@@ -52,12 +51,10 @@ router.post('/', async (req, res, next) => {
 })
 
 // PUT - update note
-router.put('/:id', async (req, res, next) => {
+router.put('/:id', validate(updateSchema), async (req, res, next) => {
   try {
     const { title, content } = req.body
-    if (!title || !content) {
-      return res.status(400).json({ message: 'Title and content are required' })
-    }
+   
     const note = await prisma.note.findUnique({
       where: { id: parseInt(req.params.id) }
     })

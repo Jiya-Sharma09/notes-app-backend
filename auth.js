@@ -4,21 +4,22 @@ const express = require('express')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const prisma = require('./prisma/client')
+const {registerSchema, loginSchema} = require('./middleware/validators/auth_validator')
+const validate = require('./middleware/validate')
+
+
 
 const router = express.Router()
 
 // REGISTER
-router.post('/register', async (req, res, next) => {
+router.post('/register',validate(registerSchema), async (req, res, next) => {
   try {
     const { name, email, password } = req.body
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: 'Name, email and password are required' })
-    }
-
+    
     const existing = await prisma.user.findUnique({ where: { email } })
-    if (existing) {
-      return res.status(400).json({ message: 'Email already in use' })
+    if(existing){
+      return res.status(409).json({message: "User email id already exists. Either use another email to register or login."})
     }
 
     const hashedPassword = await bcrypt.hash(password, 10)
@@ -34,13 +35,11 @@ router.post('/register', async (req, res, next) => {
 })
 
 // LOGIN
-router.post('/login', async (req, res, next) => {
+router.post('/login',validate(loginSchema), async (req, res, next) => {
   try {
     const { email, password } = req.body
 
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' })
-    }
+    
 
     const user = await prisma.user.findUnique({ where: { email } })
     if (!user) {
