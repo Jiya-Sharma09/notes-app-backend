@@ -6,13 +6,14 @@ const jwt = require('jsonwebtoken')
 const prisma = require('./prisma/client')
 const {registerSchema, loginSchema} = require('./middleware/validators/auth_validator')
 const validate = require('./middleware/validate')
+const {authLimiter} = require('./middleware/rate-limiters')
 
 
 
 const router = express.Router()
 
 // REGISTER
-router.post('/register',validate(registerSchema), async (req, res, next) => {
+router.post('/register',  validate(registerSchema), async (req, res, next) => {
   try {
     const { name, email, password } = req.body
 
@@ -35,7 +36,7 @@ router.post('/register',validate(registerSchema), async (req, res, next) => {
 })
 
 // LOGIN
-router.post('/login',validate(loginSchema), async (req, res, next) => {
+router.post('/login',authLimiter,validate(loginSchema), async (req, res, next) => {
   try {
     const { email, password } = req.body
 
