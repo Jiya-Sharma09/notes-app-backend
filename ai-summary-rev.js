@@ -109,7 +109,7 @@ router.get('/rev/:id', aiLimiter, async (req, res, next) => {
             });
         }
 
-        const prompt = `provide 5 to 10 questions (appropriate according to the size of the content) for revision along with answers separately. Respond with ONLY valid JSON with this format and strictly without JSON fences: {questions:[], answers:[]} with the order of answers matching exactly the order of the questions. Notes: ${content}`;
+        const prompt = `provide 5 to 10 questions (appropriate according to the size of the content) for revision along with answers separately. Respond with ONLY valid JSON with this format and strictly without JSON fences: questions:[], answers:[] with the order of answers matching exactly the order of the questions. Notes: ${content}`;
 
         const interaction = await ai.interactions.create({
             model: 'gemini-3.1-flash-lite',
