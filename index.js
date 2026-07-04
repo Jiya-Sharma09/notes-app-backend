@@ -3,14 +3,16 @@ const express = require('express')
 
 const authRoutes = require('./auth')
 const notesRoutes = require('./notes')
-const {  genLimiter} = require('./middleware/rate-limiters')
+const { genLimiter, aiLimiter } = require('./middleware/rate-limiters')
+const aiRouter = require('./ai-summary-rev')
 
 const app = express()
 app.use(express.json())
 
 // routes
 app.use('/auth', authRoutes)
-app.use('/notes',genLimiter, notesRoutes)
+app.use('/notes', genLimiter, notesRoutes)
+app.use('/ai',aiRouter)
 
 // global error handler
 app.use((err, req, res, next) => {
