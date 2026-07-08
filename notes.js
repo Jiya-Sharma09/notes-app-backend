@@ -1,7 +1,7 @@
 const express = require('express')
 const prisma = require('./prisma/client')
 const authenticate = require('./middleware/authenticate')
-const { addSchema, updateSchema } = require('./middleware/validators/notes_validators')
+const { addSchema, updateSchema, searchSchema } = require('./middleware/validators/notes_validators')
 const validate = require('./middleware/validate')
 
 const router = express.Router()
@@ -18,6 +18,22 @@ router.get('/', async (req, res, next) => {
     res.json(notes)
   } catch (err) {
     next(err)
+  }
+})
+
+// search notes endpoints:
+router.get('/search',validate(searchSchema), async (req, res, next) => {
+  const { title, createdAt } = req.query;
+  const where = {userId: req.user.userId}
+  if (title) where.title = { contains: title, mode: 'insensitive' };
+  if (createdAt) where.createdAt = new Date(createdAt);
+  try {
+    const notes = await prisma.note.findMany({
+      where
+    });
+    return res.status(200).json(notes);
+  } catch (err) {
+    return next(err);
   }
 })
 
