@@ -22,11 +22,16 @@ router.get('/', async (req, res, next) => {
 })
 
 // search notes endpoints:
-router.get('/search',validate(searchSchema), async (req, res, next) => {
+router.get('/search',validate(searchSchema, 'query'), async (req, res, next) => {
   const { title, createdAt } = req.query;
   const where = {userId: req.user.userId}
   if (title) where.title = { contains: title, mode: 'insensitive' };
-  if (createdAt) where.createdAt = new Date(createdAt);
+  if (createdAt) {
+    const start = new Date(createdAt);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    where.createdAt = { gte: start, lt: end };
+  }
   try {
     const notes = await prisma.note.findMany({
       where
