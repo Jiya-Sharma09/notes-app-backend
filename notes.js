@@ -1,7 +1,7 @@
 const express = require('express')
 const prisma = require('./prisma/client')
 const authenticate = require('./middleware/authenticate')
-const {addSchema, updateSchema} = require('./middleware/validators/notes_validators')
+const { addSchema, updateSchema } = require('./middleware/validators/notes_validators')
 const validate = require('./middleware/validate')
 
 const router = express.Router()
@@ -54,7 +54,7 @@ router.post('/', validate(addSchema), async (req, res, next) => {
 router.put('/:id', validate(updateSchema), async (req, res, next) => {
   try {
     const { title, content } = req.body
-   
+
     const note = await prisma.note.findUnique({
       where: { id: parseInt(req.params.id) }
     })
