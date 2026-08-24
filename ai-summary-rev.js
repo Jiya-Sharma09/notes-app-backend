@@ -61,7 +61,7 @@ router.get('/summary/:id', aiLimiter, async (req, res, next) => {
             })
         }
 
-        const prompt = `Summarize the following notes in 3-5 bullet points, using simple language a student can quickly scan. Respond with ONLY valid JSON and strictly avoid JSON fences. Note: ${content}`;
+        const prompt = `Summarize the following notes in 3-10 bullet points, using simple language a student can quickly scan. Respond with ONLY valid JSON and strictly avoid JSON fences. Note: ${content}`;
 
         const interaction = await ai.interactions.create({
             model: 'gemini-3.1-flash-lite',
