@@ -30,6 +30,7 @@ model Note {
 model OtpToken {
   id         Int       @id @default(autoincrement())
   userId     Int
+  purpose    String    // "SIGNUP_VERIFY" | "PASSWORD_RESET"
   otpHash    String
   expiresAt  DateTime
   consumedAt DateTime?
@@ -37,16 +38,17 @@ model OtpToken {
 
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId, createdAt])
+  @@index([userId, purpose, createdAt])
 }
 
 model OtpAttempt {
   id         Int      @id @default(autoincrement())
   userId     Int
+  purpose    String
   wasCorrect Boolean
   createdAt  DateTime @default(now())
 
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId, createdAt])
+  @@index([userId, purpose, createdAt])
 }
