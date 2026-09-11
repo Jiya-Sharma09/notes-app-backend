@@ -11,5 +11,13 @@ const loginSchema = z.object({
     password: z.string().min(8, 'Password must be atleast 8 characters long')
 })
 
+const verifyOtpSchema = z.object({
+    userId: z.number().int().positive(),
+    otp: z.union([z.string(), z.number()])
+})
 
-module.exports = {registerSchema, loginSchema}
+const resendOtpSchema = z.object({
+    userId: z.number().int().positive()
+})
+
+module.exports = { registerSchema, loginSchema, verifyOtpSchema, resendOtpSchema }
