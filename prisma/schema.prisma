@@ -7,12 +7,15 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  password  String
-  notes     Note[]
-  createdAt DateTime @default(now())
+  id         Int      @id @default(autoincrement())
+  name       String
+  email      String   @unique
+  password   String
+  isVerified Boolean  @default(false)
+  notes      Note[]
+  otpTokens  OtpToken[]
+  otpAttempts OtpAttempt[]
+  createdAt  DateTime @default(now())
 }
 
 model Note {
@@ -22,4 +25,30 @@ model Note {
   userId    Int
   user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
+}
+
+model OtpToken {
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  purpose    String    // "SIGNUP_VERIFY" | "PASSWORD_RESET"
+  otpHash    String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose, createdAt])
+}
+
+model OtpAttempt {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  purpose    String
+  wasCorrect Boolean
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose, createdAt])
 }

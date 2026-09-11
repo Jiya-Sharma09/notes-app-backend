@@ -4,12 +4,11 @@ const express = require('express')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const prisma = require('./prisma/client')
-const { registerSchema, loginSchema } = require('./middleware/validators/auth_validator')
+const { registerSchema, loginSchema, verifyOtpSchema, resendOtpSchema } = require('./middleware/validators/auth_validator')
 const validate = require('./middleware/validate')
-const { authLimiter } = require('./middleware/rate-limiters')
-const  authenticate  = require('./middleware/authenticate') // adjust path/name to match your actual file
-
-
+const { authLimiter, genLimiter } = require('./middleware/rate-limiters')
+const authenticate = require('./middleware/authenticate')
+const { createAndSendOtp, verifyOtp, PURPOSES } = require('./services/otp-service')
 
 const router = express.Router()
 
@@ -17,7 +16,6 @@ const router = express.Router()
 router.post('/register', validate(registerSchema), async (req, res, next) => {
   try {
     const { name, email, password } = req.body
-
 
     const existing = await prisma.user.findUnique({ where: { email } })
     if (existing) {
@@ -30,7 +28,95 @@ router.post('/register', validate(registerSchema), async (req, res, next) => {
       data: { name, email, password: hashedPassword }
     })
 
-    res.status(201).json({ message: 'User created', userId: user.id })
+    // Fire off the verification OTP. If email sending fails, the user account
+    // still exists (that's correct — don't lose their registration), but we
+    // tell them honestly so they know to hit /resend-otp rather than assuming
+    // an email is on its way.
+    try {
+      await createAndSendOtp(user.id, user.email, PURPOSES.SIGNUP_VERIFY)
+    } catch (otpErr) {
+      console.error('createAndSendOtp failed during /register:', otpErr)
+      return res.status(201).json({
+        message: 'User created, but the verification email could not be sent. Please request a new OTP.',
+        userId: user.id,
+        email: user.email,
+        emailSent: false
+      })
+    }
+
+    res.status(201).json({
+      message: 'User created. Please check your email for a verification code.',
+      userId: user.id,
+      email: user.email,
+      emailSent: true
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// VERIFY OTP (signup)
+router.post('/verify-otp', validate(verifyOtpSchema), async (req, res, next) => {
+  try {
+    const { userId, otp } = req.body
+
+    const user = await prisma.user.findUnique({ where: { id: userId } })
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' })
+    }
+    if (user.isVerified) {
+      return res.status(400).json({ message: 'Email already verified' })
+    }
+
+    try {
+      await verifyOtp(userId, otp, PURPOSES.SIGNUP_VERIFY)
+    } catch (otpErr) {
+      if (otpErr.code === 'GUESS_LOCKED_OUT') {
+        return res.status(429).json({ code: otpErr.code, message: otpErr.message })
+      }
+      if (otpErr.code === 'NO_VALID_OTP' || otpErr.code === 'INCORRECT_OTP') {
+        return res.status(400).json({ code: otpErr.code, message: otpErr.message })
+      }
+      console.error('verifyOtp failed with an unexpected error during /verify-otp:', otpErr)
+      throw otpErr
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { isVerified: true }
+    })
+
+    res.json({ message: 'Email verified successfully. You can now log in.' })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// RESEND OTP (signup)
+router.post('/resend-otp', genLimiter, validate(resendOtpSchema), async (req, res, next) => {
+  try {
+    const { userId } = req.body
+
+    const user = await prisma.user.findUnique({ where: { id: userId } })
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' })
+    }
+    if (user.isVerified) {
+      return res.status(400).json({ message: 'Email already verified' })
+    }
+
+    try {
+      await createAndSendOtp(user.id, user.email, PURPOSES.SIGNUP_VERIFY)
+    } catch (otpErr) {
+      if (otpErr.code === 'RESEND_RATE_LIMITED') {
+        return res.status(429).json({ code: otpErr.code, message: otpErr.message })
+      }
+      // EMAIL_SEND_FAILED or anything unexpected
+      console.error('createAndSendOtp failed during /resend-otp:', otpErr)
+      return res.status(502).json({ message: 'Could not send verification email. Please try again shortly.' })
+    }
+
+    res.json({ message: 'A new verification code has been sent to your email.' })
   } catch (err) {
     next(err)
   }
@@ -40,8 +126,6 @@ router.post('/register', validate(registerSchema), async (req, res, next) => {
 router.post('/login', authLimiter, validate(loginSchema), async (req, res, next) => {
   try {
     const { email, password } = req.body
-
-
 
     const user = await prisma.user.findUnique({ where: { email } })
     if (!user) {
@@ -53,7 +137,16 @@ router.post('/login', authLimiter, validate(loginSchema), async (req, res, next)
       return res.status(401).json({ message: 'Invalid credentials' })
     }
 
-
+    // Verified check happens AFTER password check, deliberately — checking
+    // it first would leak "this account exists and is unverified" to anyone
+    // who tries the email with a wrong password (account enumeration).
+    if (!user.isVerified) {
+      return res.status(403).json({
+        code: 'EMAIL_NOT_VERIFIED',
+        message: 'Please verify your email before logging in.',
+        userId: user.id
+      })
+    }
 
     const token = jwt.sign(
       { userId: user.id },
