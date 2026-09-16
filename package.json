@@ -4,7 +4,9 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "start": "node server.js",
+    "postinstall": "prisma generate"
   },
   "author": "",
   "license": "ISC",
