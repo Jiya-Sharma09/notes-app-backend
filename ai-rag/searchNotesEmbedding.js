@@ -22,7 +22,7 @@ async function searchNotesEmbedding({
                 chunk_text,
                 chunk_index,
                 embedding <=> ${vector}::vector AS distance
-            FROM note_chunks
+            FROM noteEmbeddings
             WHERE user_id = ${userId}
               AND note_id = ${noteId}
             ORDER BY embedding <=> ${vector}::vector
@@ -36,7 +36,7 @@ async function searchNotesEmbedding({
             chunk_text,
             chunk_index,
             embedding <=> ${vector}::vector AS distance
-        FROM note_chunks
+        FROM noteEmbeddings
         WHERE user_id = ${userId}
         ORDER BY embedding <=> ${vector}::vector
         LIMIT ${limit}

@@ -6,7 +6,7 @@ const prisma = require("../prisma/client");
 
 async function deleteNoteEmbeddings(noteId) {
     await prisma.$executeRaw`
-        DELETE FROM note_chunks
+        DELETE FROM noteEmbeddings
         WHERE note_id = ${noteId}
     `;
 }
@@ -22,7 +22,7 @@ async function storeEmbedding({
     const vector = `[${embedding.join(",")}]`;
 
     await prisma.$executeRaw`
-        INSERT INTO note_chunks
+        INSERT INTO noteEmbeddings
             (id, note_id, user_id, chunk_text, embedding, chunk_index)
         VALUES
             (gen_random_uuid(), ${noteId}, ${userId}, ${chunkText},

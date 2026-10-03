@@ -7,7 +7,7 @@ async function getAllNoteChunks({ userId, noteId }) {
             note_id,
             chunk_text,
             chunk_index
-        FROM note_chunks
+        FROM noteEmbeddings     
         WHERE user_id = ${userId}
           AND note_id = ${noteId}
         ORDER BY chunk_index ASC
