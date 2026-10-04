@@ -85,7 +85,10 @@ router.put('/:id', validate(updateSchema), async (req, res, next) => {
     }
     const updated = await prisma.note.update({
       where: { id: parseInt(req.params.id) },
-      data: { title, content }
+      data: { title, content,
+        embeddingStatus: "PENDING",
+        embeddingError: null, 
+       }
     })
     res.json(updated)
   } catch (err) {

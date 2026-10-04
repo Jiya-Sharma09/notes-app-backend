@@ -1,4 +1,5 @@
 require('dotenv').config();
+require("./cron/embeddingCron");
 
 require('dns').setDefaultResultOrder('ipv4first');
 const app = require('./app');
