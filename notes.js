@@ -85,7 +85,10 @@ router.put('/:id', validate(updateSchema), async (req, res, next) => {
     }
     const updated = await prisma.note.update({
       where: { id: parseInt(req.params.id) },
-      data: { title, content }
+      data: { title, content,
+        embeddingStatus: "PENDING",
+        embeddingError: null, 
+       }
     })
     res.json(updated)
   } catch (err) {
@@ -95,21 +98,38 @@ router.put('/:id', validate(updateSchema), async (req, res, next) => {
 
 // DELETE - delete note
 router.delete('/:id', async (req, res, next) => {
-  try {
-    const note = await prisma.note.findUnique({
-      where: { id: parseInt(req.params.id) }
-    })
-    if (!note) return res.status(404).json({ message: 'Note not found' })
-    if (note.userId !== req.user.userId) {
-      return res.status(403).json({ message: 'Access denied' })
+    try {
+        const noteId = parseInt(req.params.id);
+
+        const note = await prisma.note.findUnique({
+            where: { id: noteId }
+        });
+
+        if (!note) {
+            return res.status(404).json({ message: 'Note not found' });
+        }
+
+        if (note.userId !== req.user.userId) {
+            return res.status(403).json({ message: 'Access denied' });
+        }
+
+        await prisma.$transaction(async (tx) => {
+            await tx.$executeRaw`
+                DELETE FROM noteEmbeddings
+                WHERE note_id = ${noteId}
+                  AND user_id = ${req.user.userId}
+            `;
+
+            await tx.note.delete({
+                where: { id: noteId }
+            });
+        });
+
+        res.json({ message: 'Note deleted' });
+
+    } catch (err) {
+        next(err);
     }
-    await prisma.note.delete({
-      where: { id: parseInt(req.params.id) }
-    })
-    res.json({ message: 'Note deleted' })
-  } catch (err) {
-    next(err)
-  }
-})
+});
 
 module.exports = router

@@ -23,6 +23,10 @@ model Note {
   title     String
   content   String
   userId    Int
+
+  embeddingStatus String @default("PENDING")
+  embeddingError  String?
+
   user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
 }
