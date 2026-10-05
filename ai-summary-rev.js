@@ -3,6 +3,8 @@ const express = require("express");
 const authenticate = require('./middleware/authenticate')
 const { aiLimiter } = require('./middleware/rate-limiters');
 const prisma = require("./prisma/client");
+const { chatbotOneNote } = require("./ai-rag/chatbotOneNote");
+const { chatbotWorkspace } = require("./ai-rag/chatbotWorkspace");
 
 
 const ai = new GoogleGenAI({});
@@ -125,6 +127,78 @@ router.get('/rev/:id', aiLimiter, async (req, res, next) => {
         next(err);
     }
 
+});
+
+router.post('/workspace-bot', aiLimiter, async (req, res, next) => {
+    try {
+        const { question, history = [] } = req.body;
+
+        if (!question || !question.trim()) {
+            return res.status(400).json({
+                message: "Question is required."
+            });
+        }
+
+        const result = await chatbotWorkspace({
+            question,
+            userId: req.user.userId,
+            history,
+        });
+
+        return res.status(200).json(result);
+
+    } catch (err) {
+        next(err);
+    }
+});
+
+router.post('/notes-bot/:id', aiLimiter, async (req, res, next) => {
+    try {
+        const noteId = Number(req.params.id);
+
+        if (!Number.isInteger(noteId)) {
+            return res.status(400).json({
+                message: "Invalid note ID."
+            });
+        }
+
+        const { question, history = [] } = req.body;
+
+        if (!question || !question.trim()) {
+            return res.status(400).json({
+                message: "Question is required."
+            });
+        }
+
+        // Make sure the note belongs to the logged-in user
+        const note = await prisma.note.findUnique({
+            where: { id: noteId }
+        });
+
+        if (!note) {
+            return res.status(404).json({
+                message: "Note not found."
+            });
+        }
+
+        if (note.userId !== req.user.userId) {
+            return res.status(403).json({
+                message: "Unauthorized access."
+            });
+        }
+
+        const result = await chatbotOneNote({
+            question,
+            userId: req.user.userId,
+            noteId,
+            history,
+        });
+
+        return res.status(200).json(result);
+
+    } catch (err) {
+        next(err);
+    }
 });
 
 module.exports = router
