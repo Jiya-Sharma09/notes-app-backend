@@ -8,6 +8,7 @@ const aiRouter = require('./ai-summary-rev')
 
 const app = express()
 app.set('trust proxy', 1);
+console.log('Trust proxy:', app.get('trust proxy'));
 app.use(express.json())
 
 // routes
