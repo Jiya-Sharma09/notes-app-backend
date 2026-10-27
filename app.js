@@ -7,6 +7,7 @@ const { genLimiter, aiLimiter } = require('./middleware/rate-limiters')
 const aiRouter = require('./ai-summary-rev')
 
 const app = express()
+app.set('trust proxy', 1);
 app.use(express.json())
 
 // routes
